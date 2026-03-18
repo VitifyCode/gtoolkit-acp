@@ -309,6 +309,24 @@ GtAcpSession >> gtToolCallsFor: aView [
 		actionUpdateButton
 ]
 
+{ #category : 'testing' }
+GtAcpSession >> hasPendingPermissionForToolCallId: aToolCallId [
+	"Check if there is a pending permission request for a given tool call ID"
+	^ (pendingPermissions ifNil: [ #() ]) anySatisfy: [ :req |
+		(req at: 'status' ifAbsent: [ '' ]) = 'pending' and: [
+			((req at: 'toolCall' ifAbsent: [ Dictionary new ])
+				at: 'toolCallId' ifAbsent: [ nil ]) = aToolCallId ] ]
+]
+
+{ #category : 'testing' }
+GtAcpSession >> hasPendingPermissionForToolTitle: aTitle [
+	"Check if there is a pending permission request matching a tool title"
+	^ (pendingPermissions ifNil: [ #() ]) anySatisfy: [ :req |
+		(req at: 'status' ifAbsent: [ '' ]) = 'pending' and: [
+			((req at: 'toolCall' ifAbsent: [ Dictionary new ])
+				at: 'title' ifAbsent: [ '' ]) = aTitle ] ]
+]
+
 { #category : 'initialization' }
 GtAcpSession >> initialize [
 	super initialize.
@@ -343,6 +361,17 @@ GtAcpSession >> messageContainingToolCallId: aToolCallId [
 { #category : 'accessing' }
 GtAcpSession >> messages [
 	^ messages
+]
+
+{ #category : 'accessing' }
+GtAcpSession >> pendingPermissionForToolTitle: aTitle [
+	"Return the pending permission request matching a tool title, or nil"
+	^ (pendingPermissions ifNil: [ #() ]) 
+		detect: [ :req |
+			(req at: 'status' ifAbsent: [ '' ]) = 'pending' and: [
+				((req at: 'toolCall' ifAbsent: [ Dictionary new ])
+					at: 'title' ifAbsent: [ '' ]) = aTitle ] ]
+		ifNone: [ nil ]
 ]
 
 { #category : 'accessing' }

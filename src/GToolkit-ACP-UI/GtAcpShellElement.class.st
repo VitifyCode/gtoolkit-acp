@@ -106,7 +106,10 @@ GtAcpShellElement >> initializeListElement [
 		vMatchParent;
 		padding: (BlInsets all: 5);
 		itemStencil: [ GtAcpMessageElement new ];
-		itemDataBinder: [ :element :msg | element message: msg ]
+		itemDataBinder: [ :element :msg | 
+			element session: session. 
+			element client: client. 
+			element message: msg ]
 ]
 
 { #category : 'initialization' }
@@ -179,9 +182,13 @@ GtAcpShellElement >> initializeStatusElement [
 	statusElement := statusBar
 ]
 
-{ #category : 'updating' }
+{ #category : 'event handling' }
 GtAcpShellElement >> onPermissionRequested: anAnnouncement [
-	self enqueueTask: (BlTaskAction new action: [ self showPendingPermissions ])
+	self enqueueTask: (BlTaskAction new action: [
+		self showPendingPermissions.
+		"Also refresh messages so tool call elements show awaiting-permission state"
+		lastMessageCount := nil.
+		self updateMessages ])
 ]
 
 { #category : 'updating' }

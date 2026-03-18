@@ -168,9 +168,9 @@ GtAcpClient >> gtTrafficFor: aView [
 		ifNotNil: [ transport gtTrafficFor: aView ]
 ]
 
-{ #category : 'handlers' }
+{ #category : 'private' }
 GtAcpClient >> handlePermissionRequest: params requestId: anId [
-	| sessionId session request toolTitle |
+	| sessionId session request toolTitle options allowOption |
 	sessionId := params at: 'sessionId'.
 	session := sessions at: sessionId ifAbsent: [ ^ self ].
 	toolTitle := (params at: 'toolCall' ifAbsent: [ Dictionary new ]) at: 'title' ifAbsent: [ '' ].
@@ -180,9 +180,23 @@ GtAcpClient >> handlePermissionRequest: params requestId: anId [
 	"Auto-allow if tool was previously always-allowed in this session"
 	(session alwaysAllowedTools includes: toolTitle)
 		ifTrue: [
-			request at: 'status' put: 'auto-allowed'.
-			session permissionHistory add: request.
-			self allowPermissionRequest: anId optionId: 'allow_always' ]
+			options := params at: 'options' ifAbsent: [ #() ].
+			allowOption := options 
+				detect: [ :o | (o at: 'kind' ifAbsent: [ '' ]) = 'allow_always' ] 
+				ifNone: [ options 
+					detect: [ :o | (o at: 'kind' ifAbsent: [ '' ]) = 'allow_once' ] 
+					ifNone: [ nil ] ].
+			allowOption
+				ifNotNil: [
+					request at: 'status' put: 'auto-allowed'.
+					session permissionHistory add: request.
+					self allowPermissionRequest: anId optionId: (allowOption at: 'optionId') ]
+				ifNil: [
+					"No matching option found — show to user"
+					request at: 'status' put: 'pending'.
+					session pendingPermissions add: request.
+					session permissionHistory add: request.
+					session announcer announce: GtAcpPermissionRequested new ] ]
 		ifFalse: [
 			request at: 'status' put: 'pending'.
 			session pendingPermissions add: request.

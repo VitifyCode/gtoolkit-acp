@@ -6,11 +6,18 @@ Class {
 		'contentContainer',
 		'roleElement',
 		'thinkingElement',
-		'subscriber'
+		'subscriber',
+		'session',
+		'client'
 	],
 	#category : 'GToolkit-ACP-UI',
 	#package : 'GToolkit-ACP-UI'
 }
+
+{ #category : 'accessing' }
+GtAcpMessageElement >> client: aClient [
+	client := aClient
+]
 
 { #category : 'initialization' }
 GtAcpMessageElement >> initialize [
@@ -92,12 +99,16 @@ GtAcpMessageElement >> onMessageUpdated: anAnnouncement [
 		self updateThinking ])
 ]
 
+{ #category : 'accessing' }
+GtAcpMessageElement >> session: aSession [
+	session := aSession
+]
+
 { #category : 'updating' }
 GtAcpMessageElement >> updateContent [
 	| items existingChildren |
 	items := message contentItems.
 	existingChildren := contentContainer children asOrderedCollection.
-
 	items withIndexDo: [ :item :index |
 		index <= existingChildren size
 			ifTrue: [
@@ -113,17 +124,16 @@ GtAcpMessageElement >> updateContent [
 							ifTrue: [
 								((existing isKindOf: GtAcpToolCallElement)
 									and: [ existing toolCall toolCallId = item toolCallId ])
-									ifTrue: [ existing update ]
+									ifTrue: [ existing session: session. existing client: client. existing update ]
 									ifFalse: [
-										contentContainer replaceChild: existing with: (GtAcpToolCallElement new toolCall: item) ] ]
+										contentContainer replaceChild: existing with: (GtAcpToolCallElement new session: session; client: client; toolCall: item) ] ]
 							ifFalse: [  ] ] ]
 			ifFalse: [
 				(item isKindOf: GtAcpTextBlock)
 					ifTrue: [ contentContainer addChild: (self newEditorFor: item) ]
 					ifFalse: [
 						(item isKindOf: GtAcpToolCall)
-							ifTrue: [ contentContainer addChild: (GtAcpToolCallElement new toolCall: item) ] ] ] ].
-
+							ifTrue: [ contentContainer addChild: (GtAcpToolCallElement new session: session; client: client; toolCall: item) ] ] ] ].
 	[ contentContainer children size > items size ] whileTrue: [
 		contentContainer removeChildAt: contentContainer children size ]
 ]

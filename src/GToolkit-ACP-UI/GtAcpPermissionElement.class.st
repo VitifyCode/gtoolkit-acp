@@ -19,10 +19,10 @@ GtAcpPermissionElement >> initialize [
 	self constraintsDo: [ :c |
 		c horizontal matchParent.
 		c vertical fitContent ].
-	self padding: (BlInsets all: 10).
-	self margin: (BlInsets top: 4 bottom: 4).
-	self background: (Color veryLightGray alpha: 0.3).
-	self border: (BlBorder paint: BrGlamorousColors disabledButtonBorderColor width: 1).
+	self padding: (BlInsets all: 12).
+	self margin: (BlInsets top: 6 bottom: 6).
+	self background: (Color r: 1.0 g: 0.95 b: 0.8).
+	self border: (BlBorder paint: (Color r: 0.9 g: 0.7 b: 0.2) width: 2).
 	self initializeTitleElement.
 	self initializeOptionsContainer.
 	self addChild: titleElement as: #title.
@@ -42,11 +42,11 @@ GtAcpPermissionElement >> initializeOptionsContainer [
 { #category : 'initialization' }
 GtAcpPermissionElement >> initializeTitleElement [
 	titleElement := BrLabel new
-		aptitude: (BrGlamorousLabelAptitude new bold; fontSize: 12);
-		text: 'Permission requested';
+		aptitude: (BrGlamorousLabelAptitude new bold; fontSize: 13; foreground: (Color r: 0.6 g: 0.3 b: 0.0));
+		text: 'Action required';
 		hMatchParent;
 		vFitContent;
-		margin: (BlInsets bottom: 6)
+		margin: (BlInsets bottom: 8)
 ]
 
 { #category : 'accessing' }
@@ -71,15 +71,28 @@ GtAcpPermissionElement >> request: aRequest client: aClient [
 		optionsContainer addChild: button ]
 ]
 
-{ #category : 'accessing' }
+{ #category : 'initialization' }
 GtAcpPermissionElement >> request: aRequest client: aClient session: aSession [
-	| toolCall title options |
+	| toolCall title options inputSummary |
 	request := aRequest.
 	client := aClient.
 	session := aSession.
 	toolCall := request at: 'toolCall' ifAbsent: [ Dictionary new ].
 	title := toolCall at: 'title' ifAbsent: [ 'Unknown tool' ].
-	titleElement text: ('Permission: ' , title).
+	titleElement text: ('Action required: ' , title).
+	"Add input summary if available"
+	inputSummary := (toolCall at: 'rawInput' ifAbsent: [ nil ]).
+	(inputSummary notNil and: [ inputSummary notEmpty ]) ifTrue: [
+		| summaryText summaryLabel |
+		summaryText := ', ' join: (inputSummary associations collect: [ :assoc |
+			assoc key asString, ': ', (assoc value printString truncateTo: 80) ]).
+		summaryLabel := BrLabel new
+			aptitude: (BrGlamorousLabelAptitude new fontSize: 11; foreground: Color darkGray);
+			text: summaryText;
+			hMatchParent;
+			vFitContent;
+			margin: (BlInsets bottom: 8).
+		self addChild: summaryLabel after: titleElement ].
 	options := request at: 'options' ifAbsent: [ #() ].
 	optionsContainer removeChildren.
 	options do: [ :opt |
@@ -87,7 +100,7 @@ GtAcpPermissionElement >> request: aRequest client: aClient session: aSession [
 		button := BrButton new
 			aptitude: BrGlamorousButtonWithLabelAptitude;
 			label: (opt at: 'name' ifAbsent: [ '?' ]);
-			margin: (BlInsets right: 6);
+			margin: (BlInsets right: 8);
 			action: [ self respondWith: (opt at: 'optionId') ].
 		optionsContainer addChild: button ]
 ]
