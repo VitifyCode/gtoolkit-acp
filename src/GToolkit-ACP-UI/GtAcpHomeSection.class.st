@@ -76,6 +76,82 @@ GtAcpHomeSection >> acpShellCard [
 			container ]
 ]
 
+{ #category : 'private' }
+GtAcpHomeSection >> allSessions [
+	^ GtAcpClientRegistry uniqueInstance activeClients
+		flatCollect: [ :c | c sessions values ]
+]
+
+{ #category : 'private' }
+GtAcpHomeSection >> buildSessionElementFor: aSession [
+	| element titleLabel cwdLabel |
+	titleLabel := BrLabel new
+		aptitude: (BrGlamorousLabelAptitude new bold);
+		text: ('Session: ', (aSession sessionId copyFrom: 1 to: (8 min: aSession sessionId size))).
+	cwdLabel := BrLabel new
+		aptitude: (BrGlamorousLabelAptitude new foreground: Color gray; fontSize: 12);
+		text: (aSession cwd ifNil: [ 'no cwd' ]).
+	element := BrHorizontalPane new
+		hMatchParent;
+		vFitContent;
+		padding: (BlInsets all: 8);
+		alignCenterLeft;
+		background: Color white;
+		aptitude: (BrGlamorousButtonExteriorAptitude new
+			backgroundPaint: Color white;
+			borderPaint: BrGlamorousColors disabledButtonBorderColor);
+		margin: (BlInsets top: 4 left: self spaceGap * 2 bottom: 4 right: self spaceGap * 2);
+		when: BlClickEvent do: [ :anEvent |
+			anEvent consumed: true.
+			element phlow spawnObject: aSession ];
+		addChild: (BrVerticalPane new
+			hMatchParent;
+			vFitContent;
+			addChild: titleLabel;
+			addChild: cwdLabel).
+	^ element
+]
+
+{ #category : 'building' }
+GtAcpHomeSection >> create [
+	| sectionContainer cardsContainer sessionsContainer homeSection |
+	homeSection := self.
+	sectionContainer := self newSectionContainer.
+	sectionContainer addChild: (self newSectionTitle: self sectionTitle).
+	cardsContainer := self newCardsContainer.
+	self cards do: [ :card | cardsContainer addChild: card asElement ].
+	sectionContainer addChild: cardsContainer.
+	sessionsContainer := BlElement new
+		layout: BlLinearLayout vertical;
+		constraintsDo: [ :c |
+			c horizontal matchParent.
+			c vertical fitContent ].
+	homeSection refreshSessionsContainer: sessionsContainer.
+	sectionContainer addChild: sessionsContainer.
+	sectionContainer
+		when: BlElementAddedToSceneGraphEvent
+		do: [ :e |
+			GtAcpClientRegistry uniqueInstance announcer
+				when: GtAcpClientRegistryUpdated
+				do: [ :ann |
+					sessionsContainer enqueueTask: (BlTaskAction new action: [
+						homeSection refreshSessionsContainer: sessionsContainer ]) ]
+				for: sessionsContainer ].
+	sectionContainer
+		when: BlElementRemovedFromSceneGraphEvent
+		do: [ :e |
+			GtAcpClientRegistry uniqueInstance announcer
+				unsubscribe: sessionsContainer ].
+	^ sectionContainer
+]
+
+{ #category : 'private' }
+GtAcpHomeSection >> refreshSessionsContainer: sessionsContainer [
+	sessionsContainer removeChildren.
+	self allSessions do: [ :session |
+		sessionsContainer addChild: (self buildSessionElementFor: session) ]
+]
+
 { #category : 'accessing' }
 GtAcpHomeSection >> sectionTitle [
 	^ 'Agents'
