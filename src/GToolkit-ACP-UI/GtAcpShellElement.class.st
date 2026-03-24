@@ -241,15 +241,9 @@ GtAcpShellElement >> session [
 
 { #category : 'updating' }
 GtAcpShellElement >> showPendingPermissions [
-	| pending |
-	permissionContainer removeChildren.
-	pending := (session pendingPermissions ifNil: [ #() ]) 
-		select: [ :req | (req at: 'status' ifAbsent: [ '' ]) = 'pending' ].
-	pending do: [ :req |
-		| element |
-		element := GtAcpPermissionElement new
-			request: req client: client session: session.
-		permissionContainer addChild: element ]
+	"No-op: permissions are shown inline on tool call elements.
+	 Previously this also added them to permissionContainer at the bottom, causing duplicates."
+	permissionContainer removeChildren
 ]
 
 { #category : 'subscriptions' }

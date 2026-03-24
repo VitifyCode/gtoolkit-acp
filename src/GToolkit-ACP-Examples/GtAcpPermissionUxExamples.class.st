@@ -133,6 +133,16 @@ GtAcpPermissionUxExamples >> exampleSessionWithPendingPermission [
 	^ session
 ]
 
+{ #category : 'examples' }
+GtAcpPermissionUxExamples >> exampleShellDoesNotDuplicatePermissions [
+	<gtExample>
+	"Permissions should only appear inline on tool call elements, not duplicated at the bottom of the shell"
+	| session |
+	session := self exampleSessionWithPendingPermission.
+	self assert: (session pendingPermissions anySatisfy: [ :r | (r at: 'status') = 'pending' ]).
+	^ session
+]
+
 { #category : 'examples - tool call element' }
 GtAcpPermissionUxExamples >> exampleToolCallElementAwaitingPermission [
 	<gtExample>
