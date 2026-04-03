@@ -155,33 +155,6 @@ GtAcpShellElement >> initializeStatusBar [
 		yourself
 ]
 
-{ #category : 'initialization' }
-GtAcpShellElement >> initializeStatusElement [
-	| statusBar |
-	statusElement := BrLabel new
-		aptitude: (BrGlamorousLabelAptitude new fontSize: 11; foreground: Color gray);
-		text: 'Disconnected';
-		hMatchParent;
-		vFitContent.
-	cancelButton := BrButton new
-		aptitude: BrGlamorousButtonWithLabelAptitude;
-		label: 'Cancel';
-		beSmallSize;
-		visibility: BlVisibility gone;
-		action: [ self cancelPrompt ].
-	statusBar := BlElement new
-		layout: BlLinearLayout horizontal alignCenterLeft;
-		constraintsDo: [ :c |
-			c horizontal matchParent.
-			c vertical fitContent ];
-		padding: (BlInsets top: 4 left: 8 bottom: 4 right: 8);
-		addChild: statusElement;
-		addChild: cancelButton;
-		yourself.
-	"Replace statusElement reference with the bar for addChild:"
-	statusElement := statusBar
-]
-
 { #category : 'event handling' }
 GtAcpShellElement >> onPermissionRequested: anAnnouncement [
 	self enqueueTask: (BlTaskAction new action: [
