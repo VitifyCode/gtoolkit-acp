@@ -139,7 +139,7 @@ GtAcpMessage >> hasThinking [
 
 { #category : 'testing' }
 GtAcpMessage >> hasToolCalls [
-	^ toolCalls notEmpty
+	^ self toolCalls notEmpty
 ]
 
 { #category : 'initialization' }
@@ -213,9 +213,9 @@ GtAcpMessage >> thinking [
 	^ thinking ifNil: [ '' ] ifNotNil: [ thinking asString ]
 ]
 
-{ #category : 'building' }
+{ #category : 'accessing' }
 GtAcpMessage >> toolCallById: anId [
-	^ toolCalls detect: [ :tc | tc toolCallId = anId ] ifNone: [ nil ]
+	^ self toolCalls detect: [ :tc | tc toolCallId = anId ] ifNone: [ nil ]
 ]
 
 { #category : 'accessing' }
