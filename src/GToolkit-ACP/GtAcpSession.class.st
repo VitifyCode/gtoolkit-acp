@@ -16,7 +16,9 @@ Class {
 		'client',
 		'permissionHistory',
 		'alwaysAllowedTools',
-		'toolCallsById'
+		'toolCallsById',
+		'backgroundTasks',
+		'traceLog'
 	],
 	#category : 'GToolkit-ACP',
 	#package : 'GToolkit-ACP'
@@ -86,6 +88,11 @@ GtAcpSession >> availableModes: aCollection [
 ]
 
 { #category : 'accessing' }
+GtAcpSession >> backgroundTasks [
+	^ backgroundTasks
+]
+
+{ #category : 'accessing' }
 GtAcpSession >> client [
 	^ client
 ]
@@ -151,6 +158,18 @@ GtAcpSession >> cwd [
 { #category : 'accessing' }
 GtAcpSession >> cwd: aString [
 	cwd := aString
+]
+
+{ #category : 'private' }
+GtAcpSession >> extractOutputPathFromText: aString [
+	"Extract an output file path from text like 'Output is being written to: /path/to/file'"
+	| pathPrefix pathStart rest lineEnd |
+	pathPrefix := 'Output is being written to: '.
+	pathStart := aString indexOfSubCollection: pathPrefix.
+	pathStart = 0 ifTrue: [ ^ nil ].
+	rest := aString copyFrom: pathStart + pathPrefix size to: aString size.
+	lineEnd := rest indexOf: Character lf ifAbsent: [ rest size + 1 ].
+	^ (rest copyFrom: 1 to: lineEnd - 1) trimRight
 ]
 
 { #category : 'actions' }
@@ -338,6 +357,7 @@ GtAcpSession >> initialize [
 	availableModes := #().
 	availableModels := #().
 	toolCallsById := Dictionary new.
+	backgroundTasks := OrderedCollection new.
 	announcer := Announcer new
 ]
 
@@ -387,6 +407,21 @@ GtAcpSession >> permissionHistory [
 { #category : 'accessing' }
 GtAcpSession >> plan [
 	^ plan
+]
+
+{ #category : 'background tasks' }
+GtAcpSession >> pollBackgroundTaskCompletion: aTask [
+	"Check if the background task's output file is no longer held open by any process.
+	 If so, mark the task as completed."
+	| outputPath result |
+	outputPath := aTask at: 'outputPath' ifAbsent: [ ^ self ].
+	(aTask at: 'status' ifAbsent: [ nil ]) = 'completed' ifTrue: [ ^ self ].
+	
+	result := LibC resultOfCommand: 'lsof "', outputPath, '" 2>/dev/null; echo $?'.
+	"lsof exits with 1 when no process has the file open"
+	(result trimRight endsWith: '1') ifTrue: [
+		aTask at: 'status' put: 'completed'.
+		announcer announce: GtAcpSessionUpdated new ]
 ]
 
 { #category : 'printing' }
@@ -471,6 +506,29 @@ GtAcpSession >> processToolCallUpdate: aDictionary [
 	toolCallId := aDictionary at: 'toolCallId'.
 	toolCall := self toolCallsById at: toolCallId ifAbsent: [ ^ self ].
 	toolCall applyUpdate: aDictionary.
+	
+	"Detect background tasks from _meta.claudeCode.toolResponse.backgroundTaskId"
+	(aDictionary at: '_meta' ifAbsent: [ nil ]) ifNotNil: [ :meta |
+		(meta at: 'claudeCode' ifAbsent: [ nil ]) ifNotNil: [ :cc |
+			(cc at: 'toolResponse' ifAbsent: [ nil ]) ifNotNil: [ :response |
+				(response at: 'backgroundTaskId' ifAbsent: [ nil ]) ifNotNil: [ :taskId |
+					backgroundTasks add: (Dictionary new
+						at: 'taskId' put: taskId;
+						at: 'toolCallId' put: toolCallId;
+						at: 'status' put: 'running';
+						yourself) ] ] ] ].
+	
+	"Extract output path from content updates for background tasks"
+	(aDictionary at: 'content' ifAbsent: [ nil ]) ifNotNil: [ :contentArray |
+		contentArray do: [ :contentEntry |
+			(contentEntry at: 'content' ifAbsent: [ nil ]) ifNotNil: [ :inner |
+				(inner at: 'text' ifAbsent: [ nil ]) ifNotNil: [ :text |
+					(self extractOutputPathFromText: text) ifNotNil: [ :outputPath |
+						backgroundTasks do: [ :task |
+							(task at: 'toolCallId') = toolCallId ifTrue: [
+								task at: 'outputPath' put: outputPath.
+								self startPollingBackgroundTask: task ] ] ] ] ] ] ].
+	
 	message := self messageContainingToolCallId: toolCallId.
 	message ifNotNil: [ message announcer announce: GtAcpMessageUpdated new ].
 	announcer announce: GtAcpSessionUpdated new
@@ -480,6 +538,12 @@ GtAcpSession >> processToolCallUpdate: aDictionary [
 GtAcpSession >> processUpdate: aDictionary [
 	| updateType |
 	updateType := aDictionary at: 'sessionUpdate'.
+	
+	"Trace all updates"
+	self traceLog add: (Dictionary new
+		at: 'timestamp' put: DateAndTime now printString;
+		at: 'update' put: aDictionary;
+		yourself).
 	
 	updateType = 'agent_message_chunk' ifTrue: [ ^ self processAgentMessageChunk: aDictionary ].
 	updateType = 'user_message_chunk' ifTrue: [ ^ self processUserMessageChunk: aDictionary ].
@@ -493,9 +557,15 @@ GtAcpSession >> processUpdate: aDictionary [
 	updateType = 'config_option_update' ifTrue: [ ^ self ]. "ignore for now"
 ]
 
-{ #category : 'updating' }
+{ #category : 'processing' }
 GtAcpSession >> processUserMessageChunk: aDictionary [
 	| message contentBlock |
+	"Skip server echo if client already added a complete user message"
+	messages ifNotEmpty: [
+		| lastMessage |
+		lastMessage := messages last.
+		(lastMessage isUser and: [ lastMessage isComplete ]) ifTrue: [ ^ self ] ].
+	
 	message := self currentUserMessage.
 	contentBlock := aDictionary at: 'content'.
 	
@@ -518,7 +588,24 @@ GtAcpSession >> sessionId: aString [
 	sessionId := aString
 ]
 
+{ #category : 'background tasks' }
+GtAcpSession >> startPollingBackgroundTask: aTask [
+	"Start a background Pharo process that polls for task completion"
+	| outputPath |
+	outputPath := aTask at: 'outputPath' ifAbsent: [ ^ self ].
+	[ 
+		[ (aTask at: 'status' ifAbsent: [ nil ]) ~= 'completed' ] whileTrue: [
+			2 seconds wait.
+			self pollBackgroundTaskCompletion: aTask ]
+	] fork
+]
+
 { #category : 'accessing' }
 GtAcpSession >> toolCallsById [
 	^ toolCallsById ifNil: [ toolCallsById := Dictionary new ]
+]
+
+{ #category : 'tracing' }
+GtAcpSession >> traceLog [
+	^ traceLog ifNil: [ traceLog := OrderedCollection new ]
 ]

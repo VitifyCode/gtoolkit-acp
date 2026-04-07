@@ -17,7 +17,9 @@ Class {
 		'methodHandlers',
 		'pendingInput',
 		'messageLog',
-		'onExitBlock'
+		'onExitBlock',
+		'stderrHandler',
+		'exiting'
 	],
 	#category : 'GToolkit-ACP',
 	#package : 'GToolkit-ACP'
@@ -113,11 +115,20 @@ GtAcpTransport >> gtTrafficFor: aView [
 
 { #category : 'private' }
 GtAcpTransport >> handleProcessExit [
+	"Called from within the stdout polling thread — defer terminate via fork
+	to avoid a thread terminating itself, and guard against re-entry."
 	| exitBlock |
+	exiting ifTrue: [ ^ self ].
+	exiting := true.
 	exitBlock := onExitBlock.
 	errorHandlers do: [ :anErrorHandler | anErrorHandler cull: 'Process exited' ].
-	self terminate.
-	exitBlock ifNotNil: [ exitBlock value ]
+	[ self terminate.
+	  exitBlock ifNotNil: [ exitBlock value ] ] fork
+]
+
+{ #category : 'private' }
+GtAcpTransport >> handleStderr: aString [
+	"Override to handle stderr output. Default discards it (prevents pipe deadlock)."
 ]
 
 { #category : 'private' }
@@ -140,6 +151,7 @@ GtAcpTransport >> initialize [
 	super initialize.
 	mutex := Mutex new.
 	nextId := 1.
+	exiting := false.
 	resultHandlers := Dictionary new.
 	errorHandlers := Dictionary new.
 	methodHandlers := Dictionary new.
@@ -300,6 +312,7 @@ GtAcpTransport >> sendRequest: aMethod params: aParams do: aBlock onError: error
 
 { #category : 'lifecycle' }
 GtAcpTransport >> start [
+	exiting := false.
 	process := [ | builder |
 		builder := (GtExternalProcessBuilder new: program)
 			args: arguments;
@@ -318,7 +331,12 @@ GtAcpTransport >> start [
 	messageHandler := stdout
 			pollStringEvery: 20 milliseconds
 			do: [ :str | self processInput: str ]
-			onExit: [ self handleProcessExit ]
+			onExit: [ self handleProcessExit ].
+	"Drain stderr continuously to prevent pipe-buffer deadlock."
+	stderrHandler := stderr
+			pollStringEvery: 100 milliseconds
+			do: [ :str | str ifNotEmpty: [ self handleStderr: str ] ]
+			onExit: [ ]
 ]
 
 { #category : 'accessing' }
@@ -336,6 +354,10 @@ GtAcpTransport >> terminate [
 		ifNotNil: [ (messageHandler isTerminated or: [ messageHandler isTerminating ])
 				ifFalse: [ messageHandler terminate ].
 			messageHandler := nil ].
+	stderrHandler
+		ifNotNil: [ (stderrHandler isTerminated or: [ stderrHandler isTerminating ])
+				ifFalse: [ stderrHandler terminate ].
+			stderrHandler := nil ].
 	stderr
 		ifNotNil: [ stderr release.
 			stderr := nil ].

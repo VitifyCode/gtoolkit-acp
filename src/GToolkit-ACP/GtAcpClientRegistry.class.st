@@ -17,6 +17,22 @@ GtAcpClientRegistry class >> reset [
 	uniqueInstance := nil
 ]
 
+{ #category : 'system hooks' }
+GtAcpClientRegistry class >> shutDown: quitting [
+	"On image save/quit, disconnect all clients cleanly."
+	uniqueInstance ifNotNil: [
+		uniqueInstance clients do: [ :c | c disconnect ] ]
+]
+
+{ #category : 'system hooks' }
+GtAcpClientRegistry class >> startUp: resuming [
+	"After image restore all transport handles are stale — wipe the registry."
+	resuming ifTrue: [
+		uniqueInstance ifNotNil: [
+			uniqueInstance clients do: [ :c | c forceDisconnect ].
+			uniqueInstance := nil ] ]
+]
+
 { #category : 'accessing' }
 GtAcpClientRegistry class >> uniqueInstance [
 	^ uniqueInstance ifNil: [ uniqueInstance := self new ]

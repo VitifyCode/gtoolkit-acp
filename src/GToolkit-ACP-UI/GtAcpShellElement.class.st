@@ -244,7 +244,7 @@ GtAcpShellElement >> updateMessages [
 
 { #category : 'updating' }
 GtAcpShellElement >> updateStatus [
-	| text currentText modes |
+	| text currentText modes bgTasks runningCount completedCount |
 	text := session
 		ifNil: [ 'Disconnected' ]
 		ifNotNil: [
@@ -256,7 +256,19 @@ GtAcpShellElement >> updateStatus [
 				session messages ifNotEmpty: [
 					s nextPutAll: ' | '.
 					s print: session messages size.
-					s nextPutAll: ' msgs' ] ] ].
+					s nextPutAll: ' msgs' ].
+				bgTasks := session backgroundTasks.
+				bgTasks ifNotEmpty: [
+					runningCount := (bgTasks count: [ :t | (t at: 'status' ifAbsent: [ 'running' ]) ~= 'completed' ]).
+					completedCount := bgTasks size - runningCount.
+					s nextPutAll: ' | bg: '.
+					runningCount > 0 ifTrue: [
+						s print: runningCount.
+						s nextPutAll: ' running' ].
+					(runningCount > 0 and: [ completedCount > 0 ]) ifTrue: [ s nextPutAll: ', ' ].
+					completedCount > 0 ifTrue: [
+						s print: completedCount.
+						s nextPutAll: ' done' ] ] ] ].
 	currentText := statusLabel text asString.
 	currentText = text ifFalse: [ statusLabel text: text ].
 	session ifNotNil: [

@@ -25,12 +25,13 @@ GtAcpTextBlock >> appendText: aString [
 	text := current , delta
 ]
 
-{ #category : 'gt views' }
+{ #category : 'gt - extensions' }
 GtAcpTextBlock >> gtTextFor: aView [
 	<gtView>
 	^ aView textEditor
 		title: 'Text';
 		priority: 10;
+		styler: GtAcpMarkdownStyler new;
 		text: [ self text ]
 ]
 

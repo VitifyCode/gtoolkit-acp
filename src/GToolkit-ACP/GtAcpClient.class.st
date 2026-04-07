@@ -104,6 +104,16 @@ GtAcpClient >> disconnect [
 	announcer announce: GtAcpClientUpdated new
 ]
 
+{ #category : 'lifecycle' }
+GtAcpClient >> forceDisconnect [
+	"Disconnect without attempting to terminate the OS process.
+	Use after image restore when process handles are stale."
+	transport := nil.
+	sessions valuesDo: [ :s | s client: nil ].
+	sessions := Dictionary new.
+	announcer announce: GtAcpClientUpdated new
+]
+
 { #category : 'gt - extensions' }
 GtAcpClient >> gtDisconnectActionFor: anAction [
 	<gtAction>
@@ -247,13 +257,20 @@ GtAcpClient >> isConnected [
 	^ transport notNil and: [ transport isRunning ]
 ]
 
-{ #category : 'api' }
+{ #category : 'protocol' }
+GtAcpClient >> mcpServersForNewSession [
+	"Override to provide MCP server configurations for new sessions.
+	Returns an array of dictionaries per the ACP session/new spec."
+	^ #()
+]
+
+{ #category : 'protocol' }
 GtAcpClient >> newSessionIn: aDirectoryString do: aBlock onError: anErrorBlock [
 	transport
 		sendRequest: 'session/new'
 		params: (Dictionary new
 			at: 'cwd' put: aDirectoryString;
-			at: 'mcpServers' put: #();
+			at: 'mcpServers' put: self mcpServersForNewSession;
 			yourself)
 		do: [ :result |
 			| session |
@@ -261,7 +278,6 @@ GtAcpClient >> newSessionIn: aDirectoryString do: aBlock onError: anErrorBlock [
 			session cwd: aDirectoryString.
 			session client: self.
 			sessions at: session sessionId put: session.
-			announcer announce: GtAcpClientUpdated new.
 			aBlock cull: session ]
 		onError: anErrorBlock
 ]
@@ -280,7 +296,10 @@ GtAcpClient >> printOn: aStream [
 
 { #category : 'api' }
 GtAcpClient >> prompt: aString inSession: aSession do: aBlock onError: anErrorBlock [
-	aSession messages add: (GtAcpMessage user: aString).
+	| userMessage |
+	userMessage := GtAcpMessage user: aString.
+	userMessage markComplete.
+	aSession messages add: userMessage.
 	aSession announcer announce: GtAcpSessionUpdated new.
 	transport
 		sendRequest: 'session/prompt'

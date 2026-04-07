@@ -20,6 +20,13 @@ GtAcpMessage class >> assistant [
 ]
 
 { #category : 'instance creation' }
+GtAcpMessage class >> user [
+	^ self new
+		role: 'user';
+		yourself
+]
+
+{ #category : 'instance creation' }
 GtAcpMessage class >> user: aString [
 	^ self new
 		role: 'user';
@@ -113,13 +120,15 @@ GtAcpMessage >> gtContentFor: aView [
 					ifFalse: [ item asString ] ] ]
 ]
 
-{ #category : 'gt views' }
+{ #category : 'gt - extensions' }
 GtAcpMessage >> gtTextFor: aView [
 	<gtView>
 	^ aView textEditor
 		title: 'Text';
 		priority: 20;
-		text: [ self fullText ]
+		styler: GtAcpMarkdownStyler new;
+		text: [ self fullText ];
+		updateWhen: GtAcpMessageUpdated in: [ announcer ]
 ]
 
 { #category : 'views' }

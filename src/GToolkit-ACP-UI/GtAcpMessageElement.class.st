@@ -88,6 +88,9 @@ GtAcpMessageElement >> newEditorFor: aTextBlock [
 		hMatchParent;
 		vFitContentLimited;
 		aptitude: BrGlamorousRegularEditorAptitude;
+		styler: (message isAssistant
+			ifTrue: [ GtAcpMarkdownStyler new ]
+			ifFalse: [ BlTextNullStyler new ]);
 		beReadOnlyWithSelection;
 		text: aTextBlock text asRopedText
 ]
