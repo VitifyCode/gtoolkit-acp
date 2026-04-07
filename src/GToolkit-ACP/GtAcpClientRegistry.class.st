@@ -17,9 +17,11 @@ GtAcpClientRegistry class >> reset [
 	uniqueInstance := nil
 ]
 
-{ #category : 'system hooks' }
+{ #category : 'system startup' }
 GtAcpClientRegistry class >> shutDown: quitting [
-	"On image save/quit, disconnect all clients cleanly."
+	"On image quit, disconnect all clients cleanly.
+	On save we keep them alive so sessions survive."
+	quitting ifFalse: [ ^ self ].
 	uniqueInstance ifNotNil: [
 		uniqueInstance clients do: [ :c | c disconnect ] ]
 ]
