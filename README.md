@@ -21,7 +21,13 @@ This package lets you launch Claude Code agent processes from within GT, send pr
 
 1. **Glamorous Toolkit** (v1.0+)
 2. **Node.js** (v18+)
-3. **Claude Code ACP server** (`claude-code-acp`) -- the Node.js process that speaks ACP over stdio. See the [Claude Code ACP docs](https://github.com/zed-industries/claude-agent-acp) for setup.
+3. **Claude Code ACP server** -- install globally via npm:
+
+```bash
+npm i -g claude-code-acp
+```
+
+This provides the `cc-acp` binary. See the [Claude Code ACP docs](https://github.com/zed-industries/claude-agent-acp) for more details.
 
 ## Installation
 
@@ -44,11 +50,16 @@ The baseline loads three packages:
 
 ## Configuration
 
-Before launching, configure `GtClaudeCodeClient` with the paths to your Node.js binary and the ACP server entry point:
+Out of the box, `GtClaudeCodeClient` uses sensible defaults:
+
+- `programPath` → `'cc-acp'` (resolved via PATH)
+- `programArgs` → `#()` (empty)
+- `defaultCwd` → user home directory (`FileLocator home`)
+
+No manual configuration is required if `cc-acp` is in your PATH. To override any of these:
 
 ```smalltalk
-GtClaudeCodeClient programPath: '/path/to/node'.
-GtClaudeCodeClient programArgs: #('/path/to/claude-code-acp/dist/index.js').
+GtClaudeCodeClient programPath: '/custom/path/to/cc-acp'.
 GtClaudeCodeClient defaultCwd: '/path/to/your/project'.
 ```
 
