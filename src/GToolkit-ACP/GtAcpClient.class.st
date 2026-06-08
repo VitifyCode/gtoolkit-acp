@@ -267,7 +267,7 @@ GtAcpClient >> mcpServersForNewSession [
 	^ #()
 ]
 
-{ #category : 'protocol' }
+{ #category : 'sessions' }
 GtAcpClient >> newSessionIn: aDirectoryString do: aBlock onError: anErrorBlock [
 	transport
 		sendRequest: 'session/new'
@@ -281,6 +281,7 @@ GtAcpClient >> newSessionIn: aDirectoryString do: aBlock onError: anErrorBlock [
 			session cwd: aDirectoryString.
 			session client: self.
 			sessions at: session sessionId put: session.
+			announcer announce: GtAcpClientUpdated new.
 			aBlock cull: session ]
 		onError: anErrorBlock
 ]
