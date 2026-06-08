@@ -178,17 +178,20 @@ GtAcpClient >> gtTrafficFor: aView [
 		ifNotNil: [ transport gtTrafficFor: aView ]
 ]
 
-{ #category : 'private' }
+{ #category : 'private - handling' }
 GtAcpClient >> handlePermissionRequest: params requestId: anId [
-	| sessionId session request toolTitle options allowOption |
+	| sessionId session request toolTitle options allowOption shouldAutoAllow |
 	sessionId := params at: 'sessionId'.
 	session := sessions at: sessionId ifAbsent: [ ^ self ].
 	toolTitle := (params at: 'toolCall' ifAbsent: [ Dictionary new ]) at: 'title' ifAbsent: [ '' ].
 	request := params copy.
 	request at: 'requestId' put: anId.
 	request at: 'timestamp' put: DateAndTime now.
-	"Auto-allow if tool was previously always-allowed in this session"
-	(session alwaysAllowedTools includes: toolTitle)
+
+	"Auto-allow if session autoApproveAll is set, or if tool was previously always-allowed in this session"
+	shouldAutoAllow := session autoApproveAll or: [ session alwaysAllowedTools includes: toolTitle ].
+
+	shouldAutoAllow
 		ifTrue: [
 			options := params at: 'options' ifAbsent: [ #() ].
 			allowOption := options 

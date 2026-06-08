@@ -32,6 +32,28 @@ GtClaudeCodeClient class >> launch [
 ]
 
 { #category : 'launching' }
+GtClaudeCodeClient class >> launchDangerously [
+	"Create a new Claude Code client with auto-approve-all permissions in the default CWD"
+	^ self launchDangerouslyIn: self defaultCwd
+]
+
+{ #category : 'launching' }
+GtClaudeCodeClient class >> launchDangerouslyIn: aCwdString [
+	"Create a new Claude Code client, connect, initialize, and open a session 
+	 with auto-approve-all permissions in the given CWD."
+	| client |
+	client := self new.
+	client connect.
+	client initializeDo: [ :result |
+		client newSessionIn: aCwdString do: [ :session |
+			session autoApproveAll: true ] onError: [ :err |
+			Transcript crShow: 'Session error: ', err printString ] ]
+	onError: [ :err |
+		Transcript crShow: 'Init error: ', err printString ].
+	^ client
+]
+
+{ #category : 'launching' }
 GtClaudeCodeClient class >> launchIn: aCwdString [
 	"Create a new Claude Code client, connect, initialize, and open a session in the given CWD.
 	Returns the client. The session is created asynchronously."

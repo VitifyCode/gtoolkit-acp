@@ -6,6 +6,28 @@ Class {
 }
 
 { #category : 'examples' }
+GtAcpClientExamples >> exampleAutoApproveAllToggleAction [
+	<gtExample>
+	"The session should have a gtAction toggle for autoApproveAll"
+	| session actions toggleAction |
+	session := GtAcpSession new.
+	self assert: session autoApproveAll not.
+	
+	"Verify the toggle action method exists on GtAcpSession"
+	self assert: (GtAcpSession canUnderstand: #gtAutoApproveAllToggleFor:).
+	
+	"Verify it produces a toggle action"
+	actions := GtPhlowActionsCollector new
+		pragmaName: #gtAction;
+		fromObject: session;
+		collect.
+	toggleAction := actions detect: [ :a | a isKindOf: GtPhlowToggleAction ] ifNone: [ nil ].
+	self assert: toggleAction isNotNil.
+	
+	^ session
+]
+
+{ #category : 'examples' }
 GtAcpClientExamples >> exampleForceDisconnectClearsTransportAndSessions [
 	"forceDisconnect should nil the transport and clear sessions"
 	<gtExample>
@@ -85,6 +107,21 @@ GtAcpClientExamples >> exampleHermesClientWithGtMcpServer [
 	self assert: (entry at: 'headers') isDictionary.
 	GtHermesClient mcpServers: nil.
 	^ servers
+]
+
+{ #category : 'examples' }
+GtAcpClientExamples >> exampleLaunchDangerouslySetsAutoApproveAll [
+	<gtExample>
+	"launchDangerouslyIn: should exist and session autoApproveAll should work"
+	| session |
+	session := GtAcpSession new.
+	session autoApproveAll: true.
+	self assert: session autoApproveAll.
+	
+	"Verify the convenience methods exist on the class side"
+	self assert: (GtClaudeCodeClient class canUnderstand: #launchDangerouslyIn:).
+	self assert: (GtClaudeCodeClient class canUnderstand: #launchDangerously).
+	^ session
 ]
 
 { #category : 'examples' }

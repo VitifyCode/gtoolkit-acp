@@ -18,7 +18,8 @@ Class {
 		'alwaysAllowedTools',
 		'toolCallsById',
 		'backgroundTasks',
-		'traceLog'
+		'traceLog',
+		'autoApproveAll'
 	],
 	#category : 'GToolkit-ACP',
 	#package : 'GToolkit-ACP'
@@ -55,6 +56,16 @@ GtAcpSession >> alwaysAllowedTools [
 { #category : 'accessing' }
 GtAcpSession >> announcer [
 	^ announcer
+]
+
+{ #category : 'accessing' }
+GtAcpSession >> autoApproveAll [
+	^ autoApproveAll ifNil: [ false ]
+]
+
+{ #category : 'accessing' }
+GtAcpSession >> autoApproveAll: aBoolean [
+	autoApproveAll := aBoolean
 ]
 
 { #category : 'accessing' }
@@ -170,6 +181,28 @@ GtAcpSession >> extractOutputPathFromText: aString [
 	rest := aString copyFrom: pathStart + pathPrefix size to: aString size.
 	lineEnd := rest indexOf: Character lf ifAbsent: [ rest size + 1 ].
 	^ (rest copyFrom: 1 to: lineEnd - 1) trimRight
+]
+
+{ #category : 'gt - extensions' }
+GtAcpSession >> gtAutoApproveAllToggleFor: anAction [
+	<gtAction>
+	| indicator |
+	indicator := BlElement new
+		size: 8 @ 8;
+		geometry: BlCircleGeometry new;
+		margin: (BlInsets left: 4);
+		background: (self autoApproveAll ifTrue: [ Color green ] ifFalse: [ Color lightGray ]).
+	^ anAction toggle
+		tooltip: 'Auto-approve all tool permissions';
+		icon: indicator;
+		label: 'Auto approve tools';
+		isActivated: [ self autoApproveAll ];
+		activatedAction: [ :aToggle |
+			self autoApproveAll: true.
+			indicator background: Color green ];
+		deactivatedAction: [ :aToggle |
+			self autoApproveAll: false.
+			indicator background: Color lightGray ]
 ]
 
 { #category : 'actions' }

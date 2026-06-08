@@ -53,6 +53,44 @@ GtAcpPermissionUxExamples >> exampleAutoAllowUsesCorrectOptionId [
 	^ session
 ]
 
+{ #category : 'examples' }
+GtAcpPermissionUxExamples >> exampleAutoApproveAllSkipsPending [
+	<gtExample>
+	"When session autoApproveAll is true, permission requests should be auto-allowed 
+	 without being added to pendingPermissions, even for tools NOT in alwaysAllowedTools"
+	| client session params options |
+	client := GtAcpClient new.
+	
+	session := GtAcpSession new.
+	session sessionId: 'test-session'.
+	session autoApproveAll: true.
+	client sessions at: 'test-session' put: session.
+	
+	options := {
+		Dictionary new at: 'kind' put: 'allow_always'; at: 'name' put: 'Allow'; at: 'optionId' put: 'allow1'; yourself.
+		Dictionary new at: 'kind' put: 'reject_once'; at: 'name' put: 'No'; at: 'optionId' put: 'reject1'; yourself
+	}.
+	params := Dictionary new
+		at: 'sessionId' put: 'test-session';
+		at: 'toolCall' put: (Dictionary new at: 'title' put: 'SomeNewTool'; yourself);
+		at: 'options' put: options;
+		yourself.
+	
+	"Handle the request — transport call will fail but session state should be correct"
+	[ client handlePermissionRequest: params requestId: 42 ]
+		on: Error do: [ :e | "transport not connected - expected" ].
+	
+	"Should NOT be pending — should have been auto-approved"
+	self assert: (session pendingPermissions 
+		select: [ :r | (r at: 'status' ifAbsent: ['']) = 'pending' ]) isEmpty.
+	
+	"Should appear in history as auto-allowed"
+	self assert: session permissionHistory isNotEmpty.
+	self assert: ((session permissionHistory first at: 'status') = 'auto-allowed').
+	
+	^ session
+]
+
 { #category : 'examples - support' }
 GtAcpPermissionUxExamples >> examplePendingPermissionRequest [
 	<gtExample>
