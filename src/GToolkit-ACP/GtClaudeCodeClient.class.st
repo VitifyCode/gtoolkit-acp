@@ -154,6 +154,15 @@ GtClaudeCodeClient >> connect [
 	self connectTo: self class programPath args: self class programArgs environment: self class defaultEnvironment
 ]
 
+{ #category : 'accessing' }
+GtClaudeCodeClient >> mcpServersForNewSession [
+	"Ensure the GT MCP server is running and return its ACP configuration."
+	| mcpServer |
+	mcpServer := ClaudeMcpServer default.
+	mcpServer ensureRunning.
+	^ mcpServer acpServerEntry
+]
+
 { #category : 'printing' }
 GtClaudeCodeClient >> printOn: aStream [
 	aStream 
