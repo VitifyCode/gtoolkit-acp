@@ -45,7 +45,7 @@ GtHermesClient class >> mcpServerEntryForGtImageOnPort: aPort [
 		at: 'name' put: 'gt-image';
 		at: 'type' put: 'http';
 		at: 'url' put: 'http://localhost:', aPort asString, '/';
-		at: 'headers' put: #();
+		at: 'headers' put: Dictionary new;
 		yourself }
 ]
 

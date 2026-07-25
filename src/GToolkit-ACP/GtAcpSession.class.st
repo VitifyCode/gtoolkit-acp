@@ -174,13 +174,16 @@ GtAcpSession >> cwd: aString [
 { #category : 'private' }
 GtAcpSession >> extractOutputPathFromText: aString [
 	"Extract an output file path from text like 'Output is being written to: /path/to/file'"
-	| pathPrefix pathStart rest lineEnd |
+	| pathPrefix pathStart rest |
 	pathPrefix := 'Output is being written to: '.
 	pathStart := aString indexOfSubCollection: pathPrefix.
 	pathStart = 0 ifTrue: [ ^ nil ].
 	rest := aString copyFrom: pathStart + pathPrefix size to: aString size.
-	lineEnd := rest indexOf: Character lf ifAbsent: [ rest size + 1 ].
-	^ (rest copyFrom: 1 to: lineEnd - 1) trimRight
+	"lines handles cr, lf and crlf alike — compiled string literals carry cr
+	while wire text carries lf"
+	^ rest lines
+		ifEmpty: [ nil ]
+		ifNotEmpty: [ :allLines | allLines first trimRight ]
 ]
 
 { #category : 'gt - extensions' }
